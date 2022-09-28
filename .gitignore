@@ -1,0 +1,10 @@
+.jpg
+Images
+.ipynb*
+__pycache__
+*.txt
+.index
+*.json
+embedding
+*ckpt*
+*.tar.gz
