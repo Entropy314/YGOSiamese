@@ -17,9 +17,9 @@ class FaissSearch(predict.ModelPredicting):
             self.path = open(f'Images/anchor_embedding_{output_size}_{pretrained_model}.json')
             self.read_embedding_vectors()
             self.data = np.array([np.array(x) for x in list(self.embedding_vectors.values())])
-            self.data = np.stack(self.data).astype('float32')
+            self.data = np.stack(self.data).astype('float16')
 
-        self.data = data.astype('float32')
+        self.data = data.astype('float16')
 
     def read_embedding_vectors(self):
         self.embedding_vectors =  json.load(self.path)

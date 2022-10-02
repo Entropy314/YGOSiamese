@@ -14,11 +14,11 @@ import pull_process_image as ppi
 import model_references as MR
 
 global environment
-environment = 'local'
+environment = 'cloud'
 
 class TrainModel(siamese_nn.SiameseModel, auth.DataStore): 
 
-    def __init__(self, target_shape:tuple=(224,224), pretrained_model:str='RESNET50V2', to_gray:bool=False, use_crop:bool=True, output_size:int=64): 
+    def __init__(self, target_shape:tuple=(224,224), pretrained_model:str='RESNET50', to_gray:bool=False, use_crop:bool=True, output_size:int=64): 
         super(siamese_nn.SiameseModel, self).__init__()
         self.target_shape = target_shape
         self.to_gray = to_gray
@@ -62,7 +62,7 @@ class TrainModel(siamese_nn.SiameseModel, auth.DataStore):
         
         image_string = tf.io.read_file(filename)
         image = tf.image.decode_jpeg(image_string, channels=3)
-        image = tf.image.convert_image_dtype(image, tf.float32)    
+        image = tf.image.convert_image_dtype(image, tf.float16)    
         image = tf.image.resize(image, self.target_shape)
         if to_gray: 
             image = tf.image.rgb_to_grayscale(image)
@@ -145,20 +145,17 @@ class TrainModel(siamese_nn.SiameseModel, auth.DataStore):
                                      callbacks = [cp_callback], verbose=2)
 
     def preprocess_and_embed(self, x:str): 
-        print('FILE3',x)
-        print('FILE3',x.numpy())
-        x = tf.Variable([self.preprocess_image(x.numpy(), self.to_gray)])
+        
+        x = tf.Variable([self.preprocess_image(x)])
         x = MR.PREPROCESS[self.pretrained_model].preprocess_input(x)
-        return self.siamese_model.embedding_model(x)
+        return self.embedding_model(x)
 
     def fetch_anchor_embeddings(self, save:bool=True): 
         self.ANCHOR_EMBEDDINGS = []
         i = 0 
         tmp = tf.data.Dataset.from_tensor_slices(self.anchor_paths)
         ############################
-        print('TMP', tmp)
         for img in tmp:
-            print('IMG',img)
             if i % 1000 == 0 : 
                 print(i)
             self.ANCHOR_EMBEDDINGS.append(self.preprocess_and_embed(img))
@@ -170,10 +167,12 @@ class TrainModel(siamese_nn.SiameseModel, auth.DataStore):
         self.anchor_labels = [str(x.numpy()).split('/')[-2]for x in tmp]
         self.embedding_vec = dict(zip(self.anchor_paths, self.ANCHOR_EMBEDDINGS))
         if save: 
+            
             with open(f'embeddings/anchor_embedding_{self.pretrained_model}_{self.output_size}.json', 'w') as outfile:
                 json.dump(self.embedding_vec, outfile)
-
-
+                
+            with open(f'gs://cards-data/yugioh/embeddings/anchor_embedding_{self.pretrained_model}_{self.output_size}.json', 'w') as outfile:
+                json.dump(self.embedding_vec, outfile)
 if __name__ == '__main__':
     print(environment)
     m = TrainModel(pretrained_model='MOBILENETV2')
